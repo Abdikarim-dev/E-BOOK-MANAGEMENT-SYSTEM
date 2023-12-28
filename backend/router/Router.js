@@ -261,11 +261,30 @@ ApiRouter.put("/users/update/:id", async function (req, res) {
   const query = await User.findByIdAndUpdate(id, {
     name,
     email,
-  })
-    .then((res) => {
-      res.status(200).send({ name: name, email: email });
-    })
-    .catch((e) => res.status(500).send({ Message: e.message }));
+  });
+  try {
+    res.status(200).send("USER UPDATED SUCCESSFULLY :)");
+  } catch (error) {
+    res.status(400).send({ Message: error.message });
+  }
 });
+// Change password
+ApiRouter.post('/users/change-password/:id', async (req, res) => {
+  try {
+      const user = await User.findById(req.params.id);
+      const { currentPassword, newPassword } = req.body;
 
+      if (!bcrypt.compareSync(currentPassword, user.password)) {
+          return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
+      user.password = hashedNewPassword;
+      await user.save();
+
+      res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+      res.status(500).json({ message: "Error changing password" });
+  }
+});
 export default ApiRouter;
