@@ -1,8 +1,9 @@
 // AUTH CONTROLLER ?
 
-import User from "../models/userShema.js";
+// Mohamed Barre Ga'al
+import User from "../models/userShema.js"; // File Path Waye waxaa laga doona ../models/userShema.js
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+
 
 const register = (req, res, next) => {
   bcrypt.hash(req.body.password, 10, async function (err, hashedPass) {

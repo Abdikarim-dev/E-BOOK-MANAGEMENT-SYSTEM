@@ -2,8 +2,9 @@ import express from "express";
 import dotenv from "dotenv";
 import ApiRouter from "./router/Router.js";
 import mongoose from "mongoose";
-import CreateRouter from "./router/CreateRouter.js";
 import cors from "cors";
+import UserRouter from "./router/UserRoutes.js";
+import Book from "./models/bookSchema.js";
 const app = express();
 
 dotenv.config();
@@ -23,9 +24,23 @@ mongoose
   .catch((err) => console.log(err.message));
 
 // API routes
-app.use("/api/default", CreateRouter);
+// app.use("/api/default", CreateRouter);
 app.use("/api/", ApiRouter);
+app.use("/users/", UserRouter);
 app.use('/uploads', express.static('uploads'));
+
+app.get('/api/books/countByAuthor', async (req, res) => {
+  try {
+    const bookCounts = await Book.aggregate([
+      { $group: { _id: "$Author", count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+    res.json(bookCounts);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
 });

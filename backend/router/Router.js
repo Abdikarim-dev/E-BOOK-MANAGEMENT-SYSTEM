@@ -5,9 +5,10 @@ dotenv.config();
 import multer from "multer";
 import fs from "fs";
 import Book from "../models/bookSchema.js";
-import register from "../controller/AuthController.js";
+
 import User from "../models/userShema.js";
 import bcrypt from "bcryptjs";
+import deleteFile from "./Test.js";
 // const upload = multer({ dest:'uploads/'})
 const ApiRouter = express.Router();
 
@@ -126,34 +127,107 @@ ApiRouter.post(
   }
 );
 
+ApiRouter.get('/authors', async (req, res) => {
+  try {
+    // MongoDB aggregation pipeline
+    const pipeline = [
+      { $group: { _id: "$Author", count: { $sum: 1 } } } // Group by author and count their books
+    ];
+
+    const authorsWithBookCount = await Book.aggregate(pipeline);
+
+    if (authorsWithBookCount.length === 0) {
+      return res.status(404).send({ message: "No authors found." });
+    }
+
+    res.status(200).json(authorsWithBookCount.length);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching author data", error: error.message });
+  }
+});
+
+
+// ApiRouter.delete('/delete/:id', (req, res) => {
+//   const {id} = req.params.id;
+
+//   Book.findByIdAndDelete(id);
+// })
+
+// ApiRouter.delete("/books/delete/:id", async (req, res) => {
+//   let { id } = req.params;
+//   await Book.findByIdAndDelete(id)
+//     // .then((result) => {
+//     //   if (result.Image != "") {
+//     //     const image = result.Image;
+//     //     const folder = "images"
+//     //     deleteFile(image, folder)
+//     //   }
+//     //   if (result.File != "") {
+//     //     const folder = "pdfs"
+//     //     const file = result.File.trim();
+//     //     deleteFile(file,folder)
+//     //
+
+//     .catch(function (err) {
+//       res.status(401).send(err.message);
+//     });
+// });
+
+
+// Jabril Abdullahi Kulane
+
 ApiRouter.get("/books/all", async (req, res) => {
   const query = await Book.find();
   res.send(query);
 });
-ApiRouter.delete("/books/delete/:id", async (req, res) => {
-  let { id } = req.params;
-  await Book.findByIdAndDelete(id)
-    .then((result) => {
-      console.log(result.Image);
-      if (result.Image != "") {
-        try {
-          fs.unlinkSync(`../uploads/images/${result.Image}`);
-        } catch (error) {
-          console.log(error);
-        }
+
+ApiRouter.delete('/books/delete/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+      // Find the book by ID and delete it
+      const bookToDelete = await Book.findByIdAndDelete(id);
+      if (bookToDelete) {
+          res.status(200).send(`Book with id ${id} deleted successfully.`);
+      } else {
+          res.status(404).send('Book not found');
       }
-      if (result.File != "") {
-        try {
-          fs.unlinkSync(`../uploads/pdfs/${result.File}`);
-        } catch (error) {
-          console.log(error);
-        }
-      }
-    })
-    .catch(function (err) {
-      res.status(401).send(err.message);
-    });
+  } catch (error) {
+      console.error(error);
+      res.status(500).send(error.message);
+  }
 });
+
+
+
+
+// ApiRouter.delete("/books/delete/:id", async (req, res) => {
+//   let { id } = req.params;
+//   try {
+//     const result = await Book.findByIdAndDelete(id);
+//     if (result) {
+//       // if (result.Image && result.Image.trim() !== "") {
+//       //   const imagePath = path.join(__dirname, '..', 'uploads', 'images', result.Image.trim());
+//       //   fs.unlinkSync(imagePath);
+//       // }
+//       if (result.File && result.File.trim() !== "") {
+//         const filePath = path.join(__dirname, '../uploads/pdfs', result.File.trim());
+//         if (fs.existsSync(filePath)) {
+//             fs.unlinkSync(filePath);
+//         } else {
+//             console.log('File not found:', filePath);
+//         }
+//     }
+//       // send successful response
+//     } else {
+//       res.status(404).send('Book not found');
+//     }
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).send(error.message);
+//   }
+// });
+
+// Abdirahman Shiine 
 ApiRouter.put(
   "/books/update/:id",
   upload.array("files", 10),
@@ -233,7 +307,7 @@ ApiRouter.get("/books/grouped-by-author", async (req, res) => {
 
 // AUTH ROUTE
 
-ApiRouter.post("/register", register);
+// Abdijabaar Assad
 ApiRouter.post("/login", async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email: email });
@@ -244,47 +318,10 @@ ApiRouter.post("/login", async (req, res) => {
     if (!match) return res.status(400).send({ ErrorMessage: "Wrond password" });
     else {
       res.status(200).send({ Message: "Logged in" });
-      // res.redirect('/');
     }
   });
 });
 
-ApiRouter.get("/users/all", async function (req, res) {
-  const query = await User.find();
-  res.send(query);
-});
+// Abdinasir Ali Yusuf
 
-ApiRouter.put("/users/update/:id", async function (req, res) {
-  const { id } = req.params;
-  const { name, email } = req.body;
-
-  const query = await User.findByIdAndUpdate(id, {
-    name,
-    email,
-  });
-  try {
-    res.status(200).send("USER UPDATED SUCCESSFULLY :)");
-  } catch (error) {
-    res.status(400).send({ Message: error.message });
-  }
-});
-// Change password
-ApiRouter.post('/users/change-password/:id', async (req, res) => {
-  try {
-      const user = await User.findById(req.params.id);
-      const { currentPassword, newPassword } = req.body;
-
-      if (!bcrypt.compareSync(currentPassword, user.password)) {
-          return res.status(401).json({ message: "Current password is incorrect" });
-      }
-
-      const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
-      user.password = hashedNewPassword;
-      await user.save();
-
-      res.status(200).json({ message: "Password changed successfully" });
-  } catch (error) {
-      res.status(500).json({ message: "Error changing password" });
-  }
-});
 export default ApiRouter;
